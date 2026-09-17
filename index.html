@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Cetak Label Meja Tahun 4 (Pukal)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library SheetJS untuk membaca fail Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Tetapan khusus untuk cetakan (Print) - A4 Potret */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm; /* Ruang margin tepi kertas */
+            }
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: 1fr !important; /* 1 lajur memanjang ke bawah untuk Potret */
+                row-gap: 15mm;
+                align-content: start;
+            }
+            .label-card {
+                break-inside: avoid; /* Elak label terpotong ke muka surat sebelah */
+                page-break-inside: avoid;
+                width: 100%;
+                border: 2px solid #000 !important;
+                box-shadow: none !important;
+                margin: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            table th, table td {
+                border-color: #000 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8 font-sans">
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- BAHAGIAN 1: BORANG INPUT (TIDAK DICETAK) -->
+        <div class="lg:col-span-5 bg-white p-6 rounded-lg shadow-md no-print h-fit">
+            
+            <!-- Bahagian Muat Naik Excel -->
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Muat Naik Data Pukal (Excel)
+            </h2>
+            <div class="mb-6 bg-green-50 p-4 rounded border border-green-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Pilih fail .xlsx atau .xls</label>
+                <input type="file" id="excelUpload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700 cursor-pointer">
+                <p id="statusUpload" class="text-xs text-green-700 mt-2 font-semibold">Sila pastikan Excel mempunyai tajuk lajur seperti Nama, Angka Giliran, No KP, dll.</p>
+            </div>
+
+            <!-- Borang Manual (Preview / Edit / Tambah) -->
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Semakan / Input Manual</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nama Calon</label>
+                    <input type="text" id="inputNama" value="NAMA PELAJAR BARU" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Angka Giliran</label>
+                        <input type="text" id="inputGiliran" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">No. Kad Pengenalan</label>
+                        <input type="text" id="inputKP" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tarikh Lahir</label>
+                        <input type="text" id="inputTarikhLahir" placeholder="Cth: 01/01/2016" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Jantina</label>
+                        <select id="inputJantina" onchange="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                            <option value="">Sila Pilih</option>
+                            <option value="LELAKI">LELAKI</option>
+                            <option value="PEREMPUAN">PEREMPUAN</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Keturunan</label>
+                        <input type="text" id="inputKeturunan" placeholder="Cth: MELAYU" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Agama</label>
+                        <input type="text" id="inputAgama" placeholder="Cth: ISLAM" oninput="updateManual()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Butang Tambah Label Manual & Cetak -->
+            <div class="mt-6 flex flex-col gap-3">
+                <button type="button" onclick="tambahLabelManual()" class="w-full bg-yellow-500 text-white font-bold py-2.5 px-4 rounded hover:bg-yellow-600 transition flex justify-center items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Label Secara Manual
+                </button>
+                
+                <button onclick="window.print()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition flex justify-center items-center gap-2 mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Cetak Label (A4 Potret)
+                </button>
+                <p class="text-xs text-gray-500 text-center">Tip: Aplikasi akan menyusun label dari atas ke bawah (Potret) pada setiap kertas A4 secara automatik.</p>
+            </div>
+        </div>
+
+        <!-- BAHAGIAN 2: PRATONTON LABEL (AKAN DICETAK) -->
+        <div class="lg:col-span-7 flex justify-center items-start">
+            <!-- Container untuk Paparan & Cetakan -->
+            <div id="print-area" class="w-full grid grid-cols-1 gap-6">
+                <!-- Data akan dijana di sini oleh JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Array untuk menyimpan data pelajar dan index aktif untuk borang manual
+        let pelajarData = [{
+            nama: "NAMA PELAJAR BARU", giliran: "", kp: "", tarikhLahir: "", jantina: "", keturunan: "", agama: ""
+        }];
+        let activeEditIndex = 0; // Merujuk kepada label keberapa yang sedang disunting di borang
+
+        // Fungsi menjana HTML untuk satu label (ditambah parameter index)
+        function generateLabelHTML(p, index) {
+            return `
+                <div class="label-card relative bg-white p-5 md:p-6 rounded-lg shadow-xl border-2 border-gray-800 w-full flex flex-col justify-between">
+                    
+                    <!-- Butang Edit (Hanya nampak di skrin, diabaikan masa cetak) -->
+                    <button type="button" onclick="editLabel(${index})" class="no-print absolute top-3 right-3 bg-blue-500 text-white font-bold py-1.5 px-3 rounded text-xs hover:bg-blue-600 transition flex items-center gap-1 shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        Edit
+                    </button>
+
+                    <div class="text-center font-bold mb-4">
+                        <h1 class="text-xl tracking-wider">LABEL MEJA</h1>
+                        <h2 class="text-lg mt-1">MATRIK PEMBELAJARAN TAHUN 4</h2>
+                        <h3 class="text-base mt-1">(TAHUN 2026)</h3>
+                    </div>
+
+                    <table class="w-full text-xs md:text-sm border-collapse border border-gray-800 mb-4 font-semibold">
+                        <tbody>
+                            <tr>
+                                <td class="border border-gray-800 p-1.5 w-1/3 bg-gray-50">Nama Calon:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase" colspan="3">${p.nama || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50">Angka Giliran:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase" colspan="3">${p.giliran || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50">No. Kad Pengenalan:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase">${p.kp || '-'}</td>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50 w-1/5 whitespace-nowrap">Tarikh Lahir:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase">${p.tarikhLahir || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50">Jantina:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase">${p.jantina || '-'}</td>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50">Keturunan:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase">${p.keturunan || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-800 p-1.5 bg-gray-50">Agama:</td>
+                                <td class="border border-gray-800 p-1.5 uppercase" colspan="3">${p.agama || '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Ruangan Mata Pelajaran & Tandatangan bersebelahan -->
+                    <div class="border border-gray-800 flex text-sm">
+                        <!-- Kiri: Mata Pelajaran -->
+                        <div class="w-3/4 p-3 border-r border-gray-800 flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-bold underline mb-2 text-center">Mata pelajaran yang diambil</h4>
+                                <div class="grid grid-cols-2 gap-y-1 mb-3 font-semibold px-1 text-xs md:text-sm">
+                                    <div class="flex items-center gap-2"><span class="border border-gray-800 w-4 h-4 inline-block"></span> 041 — Bahasa Melayu</div>
+                                    <div class="flex items-center gap-2"><span class="border border-gray-800 w-4 h-4 inline-block"></span> 043 — Bahasa Inggeris</div>
+                                    <div class="flex items-center gap-2"><span class="border border-gray-800 w-4 h-4 inline-block"></span> 045 — Matematik</div>
+                                    <div class="flex items-center gap-2"><span class="border border-gray-800 w-4 h-4 inline-block"></span> 048 — Sains</div>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-gray-800 font-bold flex justify-between px-1">
+                                <span>Jumlah mata pelajaran :</span>
+                                <span class="text-lg">4</span>
+                            </div>
+                        </div>
+
+                        <!-- Kanan: Tandatangan Calon -->
+                        <div class="w-1/4 p-3 flex flex-col justify-end items-center">
+                            <div class="w-full border-b border-gray-800 mb-1"></div>
+                            <span class="text-xs font-bold text-center leading-tight">Tandatangan<br>Calon</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fungsi Render semua label ke dalam skrin
+        function renderLabels() {
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = ''; 
+            
+            pelajarData.forEach((pelajar, index) => {
+                printArea.innerHTML += generateLabelHTML(pelajar, index);
+            });
+        }
+
+        // Fungsi Memuatkan data label ke dalam borang untuk disunting
+        function editLabel(index) {
+            activeEditIndex = index; // Set index aktif kepada label yang dipilih
+            const p = pelajarData[index];
+            
+            // Masukkan data ke dalam borang input
+            document.getElementById('inputNama').value = p.nama;
+            document.getElementById('inputGiliran').value = p.giliran;
+            document.getElementById('inputKP').value = p.kp;
+            document.getElementById('inputTarikhLahir').value = p.tarikhLahir;
+            document.getElementById('inputJantina').value = p.jantina;
+            document.getElementById('inputKeturunan').value = p.keturunan;
+            document.getElementById('inputAgama').value = p.agama;
+
+            // Tatal (scroll) skrin kembali ke atas/bahagian borang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Fungsi update apabila ditaip secara manual (Kemas kini label aktif)
+        function updateManual() {
+            if(pelajarData.length === 0) {
+                pelajarData = [{}];
+                activeEditIndex = 0;
+            }
+            
+            pelajarData[activeEditIndex] = {
+                nama: document.getElementById('inputNama').value,
+                giliran: document.getElementById('inputGiliran').value,
+                kp: document.getElementById('inputKP').value,
+                tarikhLahir: document.getElementById('inputTarikhLahir').value,
+                jantina: document.getElementById('inputJantina').value,
+                keturunan: document.getElementById('inputKeturunan').value,
+                agama: document.getElementById('inputAgama').value
+            };
+            renderLabels();
+        }
+
+        // Fungsi Tambah Label Baru secara Manual
+        function tambahLabelManual() {
+            // Tambah objek kosong ke dalam array
+            pelajarData.push({
+                nama: "NAMA PELAJAR BARU", giliran: "", kp: "", tarikhLahir: "", jantina: "", keturunan: "", agama: ""
+            });
+            
+            // Set index aktif ke label yang baru ditambah (paling hujung)
+            activeEditIndex = pelajarData.length - 1;
+
+            // Kosongkan semula borang input supaya sedia ditaip untuk label baru
+            document.getElementById('inputNama').value = "NAMA PELAJAR BARU";
+            document.getElementById('inputGiliran').value = "";
+            document.getElementById('inputKP').value = "";
+            document.getElementById('inputTarikhLahir').value = "";
+            document.getElementById('inputJantina').value = "";
+            document.getElementById('inputKeturunan').value = "";
+            document.getElementById('inputAgama').value = "";
+
+            renderLabels();
+        }
+
+        // Logika untuk baca Excel menggunakan SheetJS
+        document.getElementById('excelUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {raw: false, defval: ""});
+
+                if (jsonData.length > 0) {
+                    pelajarData = []; 
+                    
+                    jsonData.forEach(row => {
+                        const getVal = (keywords) => {
+                            for (let key in row) {
+                                if (keywords.some(k => key.toUpperCase().includes(k))) {
+                                    return row[key].toString().trim();
+                                }
+                            }
+                            return "";
+                        };
+
+                        pelajarData.push({
+                            nama: getVal(['NAMA']),
+                            giliran: getVal(['GILIRAN', 'ANGKA']),
+                            kp: getVal(['KP', 'IC', 'KAD PENGENALAN']),
+                            tarikhLahir: getVal(['TARIKH', 'LAHIR', 'DOB']),
+                            jantina: getVal(['JANTINA', 'SEKS', 'GENDER']),
+                            keturunan: getVal(['KETURUNAN', 'BANGSA', 'KAUM']),
+                            agama: getVal(['AGAMA', 'RELIGION'])
+                        });
+                    });
+
+                    // Set index ke 0 untuk dipaparkan dalam borang
+                    activeEditIndex = 0;
+                    document.getElementById('inputNama').value = pelajarData[0].nama;
+                    document.getElementById('inputGiliran').value = pelajarData[0].giliran;
+                    document.getElementById('inputKP').value = pelajarData[0].kp;
+                    document.getElementById('inputTarikhLahir').value = pelajarData[0].tarikhLahir;
+                    document.getElementById('inputJantina').value = pelajarData[0].jantina;
+                    document.getElementById('inputKeturunan').value = pelajarData[0].keturunan;
+                    document.getElementById('inputAgama').value = pelajarData[0].agama;
+
+                    document.getElementById('statusUpload').innerText = `Berjaya memuat naik ${pelajarData.length} data pelajar!`;
+                    document.getElementById('statusUpload').classList.replace('text-green-700', 'text-blue-700');
+
+                    renderLabels();
+                } else {
+                    alert("Fail Excel kosong atau format tidak sah.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Initialize view pertama kali buka
+        renderLabels();
+    </script>
+</body>
+</html>
